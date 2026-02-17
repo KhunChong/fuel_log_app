@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fuel Log Pro</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2311/2311543.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        .ios-blur { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        .animate-slide-up { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-[#F2F2F7] min-h-screen pb-32">
+
+    <div class="p-6 pb-2">
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">บันทึกน้ำมัน</h1>
+        <p class="text-gray-500 text-sm">ตรวจสอบอัตราสิ้นเปลืองและค่าใช้จ่าย</p>
+    </div>
+
+    <div class="p-4">
+        <div class="ios-blur rounded-2xl p-5 shadow-sm border border-white bg-white/80">
+            <p class="text-gray-400 text-[10px] uppercase tracking-widest font-bold">ยอดรวมเดือนนี้</p>
+            <div class="flex items-baseline gap-1 mt-1">
+                <span class="text-3xl font-bold text-blue-600" id="monthlyTotal">0</span>
+                <span class="text-gray-500 font-medium">บาท</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 space-y-3" id="recordList"></div>
+
+    <div class="px-4 mt-8 mb-4">
+        <button onclick="exportCSV()" class="w-full py-3 bg-white border border-gray-300 text-gray-600 rounded-xl font-medium text-sm shadow-sm active:bg-gray-50 flex justify-center items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            ส่งออกข้อมูลเป็น Excel (CSV)
+        </button>
+        <p class="text-center text-xs text-gray-400 mt-2">ข้อมูลถูกเก็บอยู่ในเครื่องนี้เท่านั้น</p>
+    </div>
+
+    <button onclick="toggleModal()" class="fixed bottom-8 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-xl flex items-center justify-center text-3xl focus:outline-none active:scale-90 transition-transform z-40">
+        <span class="mb-1">+</span>
+    </button>
+
+    <div id="modal" class="hidden fixed inset-0 bg-black/30 backdrop-blur-[2px] flex items-end justify-center z-50">
+        <div class="bg-[#F9F9F9] w-full max-w-lg rounded-t-[2.5rem] p-8 shadow-2xl animate-slide-up">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">เพิ่มรายการใหม่</h2>
+                <button onclick="toggleModal()" class="text-blue-600 font-medium">ปิด</button>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase mb-2 ml-1">ประเภทน้ำมัน</label>
+                    <div class="relative">
+                        <select id="fuelTypeInput" class="w-full p-4 bg-white rounded-2xl outline-none shadow-sm border-none text-gray-700 appearance-none">
+                            <option value="Gasohol 95">Gasohol 95</option>
+                            <option value="Gasohol 91">Gasohol 91</option>
+                            <option value="E20">E20</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                            <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-gray-400 uppercase mb-2 ml-1">เลขไมล์ปัจจุบัน (km)</label>
+                    <input type="number" id="odoInput" class="w-full p-4 bg-white rounded-2xl outline-none shadow-sm" placeholder="เช่น 12450">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-2 ml-1">จำนวนลิตร (L)</label>
+                        <input type="number" step="0.01" id="litersInput" class="w-full p-4 bg-white rounded-2xl outline-none shadow-sm" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase mb-2 ml-1">ยอดเงิน (บาท)</label>
+                        <input type="number" id="costInput" class="w-full p-4 bg-white rounded-2xl outline-none shadow-sm" placeholder="0.00">
+                    </div>
+                </div>
+
+                <button onclick="saveRecord()" class="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-lg shadow-blue-200 shadow-lg mt-4 active:bg-blue-700 transition-colors">
+                    บันทึกข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let records = JSON.parse(localStorage.getItem('fuel_logs_v2') || '[]');
+
+        function toggleModal() {
+            document.getElementById('modal').classList.toggle('hidden');
+        }
+
+        function saveRecord() {
+            const fuelType = document.getElementById('fuelTypeInput').value;
+            const odo = parseFloat(document.getElementById('odoInput').value);
+            const liters = parseFloat(document.getElementById('litersInput').value);
+            const cost = parseFloat(document.getElementById('costInput').value);
+
+            if (!odo || !liters || !cost) {
+                alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+                return;
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                fuelType: fuelType,
+                odo: odo,
+                liters: liters,
+                cost: cost
+            };
+
+            records.push(newRecord);
+            localStorage.setItem('fuel_logs_v2', JSON.stringify(records));
+            
+            document.getElementById('odoInput').value = '';
+            document.getElementById('litersInput').value = '';
+            document.getElementById('costInput').value = '';
+            
+            toggleModal();
+            render();
+        }
+
+        function calculateEfficiency(current) {
+            const sorted = [...records].sort((a, b) => a.odo - b.odo);
+            const idxInSorted = sorted.findIndex(r => r.id === current.id);
+            if (idxInSorted === 0) return null;
+            
+            const prev = sorted[idxInSorted - 1];
+            const dist = current.odo - prev.odo;
+            if (dist <= 0) return null; 
+            return (dist / current.liters).toFixed(2);
+        }
+
+        function render() {
+            const list = document.getElementById('recordList');
+            const monthlyTotal = document.getElementById('monthlyTotal');
+            
+            const currMonth = new Date().getMonth();
+            const currYear = new Date().getFullYear();
+            
+            const total = records
+                .filter(r => {
+                    const d = new Date(r.date);
+                    return d.getMonth() === currMonth && d.getFullYear() === currYear;
+                })
+                .reduce((sum, r) => sum + r.cost, 0);
+            
+            monthlyTotal.innerText = total.toLocaleString();
+
+            if (records.length === 0) {
+                list.innerHTML = `<div class="text-center py-10 text-gray-400 text-sm italic">ยังไม่มีข้อมูลการเติมน้ำมัน</div>`;
+                return;
+            }
+
+            list.innerHTML = records.sort((a, b) => new Date(b.date) - new Date(a.date)).map(r => {
+                const eff = calculateEfficiency(r);
+                const d = new Date(r.date);
+                const dateStr = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+                
+                return `
+                    <div class="bg-white p-5 rounded-2xl shadow-sm flex justify-between items-center border border-gray-100">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md">${r.fuelType}</span>
+                                <span class="text-sm font-bold text-gray-800">${dateStr}</span>
+                            </div>
+                            <p class="text-[11px] text-gray-400 font-medium tracking-wide">
+                                ${r.odo.toLocaleString()} km • ${r.liters.toLocaleString()} ลิตร
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold text-blue-600 leading-tight">฿${r.cost.toLocaleString()}</p>
+                            <p class="text-[11px] font-bold ${eff ? 'text-green-500' : 'text-gray-300'}">
+                                ${eff ? eff + ' km/L' : 'เริ่มเก็บข้อมูล'}
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ฟังก์ชัน Export CSV ใหม่
+        function exportCSV() {
+            if (records.length === 0) return alert('ยังไม่มีข้อมูลให้ส่งออก');
+
+            // 1. สร้าง Header
+            let csvContent = "\uFEFF"; // BOM เพื่อให้ Excel อ่านภาษาไทยออก
+            csvContent += "Date,Time,Fuel Type,Odometer (km),Liters,Cost (Baht),Efficiency (km/L)\n";
+
+            // 2. เรียงข้อมูลตามเวลา
+            const sortedRecords = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // 3. วนลูปสร้างแถวข้อมูล
+            sortedRecords.forEach(r => {
+                const d = new Date(r.date);
+                const dateStr = d.toLocaleDateString('th-TH');
+                const timeStr = d.toLocaleTimeString('th-TH');
+                const eff = calculateEfficiency(r) || ""; // ถ้าไม่มีค่าให้เป็นว่างๆ
+
+                // Escape ข้อมูลเพื่อความปลอดภัย (เช่นถ้ามีเครื่องหมายจุลภาค)
+                const row = [
+                    `"${dateStr}"`,
+                    `"${timeStr}"`,
+                    `"${r.fuelType}"`,
+                    r.odo,
+                    r.liters,
+                    r.cost,
+                    eff
+                ].join(",");
+                csvContent += row + "\n";
+            });
+
+            // 4. สร้าง Blob และลิงก์ดาวน์โหลด
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            // สร้าง Element ชั่วคราวเพื่อกดดาวน์โหลด
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            
+            // ตั้งชื่อไฟล์ตามวันที่ปัจจุบัน
+            const today = new Date().toISOString().slice(0, 10);
+            link.setAttribute("download", `fuel_log_${today}.csv`);
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        render();
+    </script>
+</body>
+</html>
